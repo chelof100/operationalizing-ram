@@ -709,28 +709,37 @@ constructed. When it cannot be constructed, execution must not occur.}
 \centering
 \begin{tikzpicture}[
   >=Stealth,
-  node distance=1.4cm,
-  box/.style={draw, rectangle, align=center,
-              minimum width=5.5cm, minimum height=0.9cm, font=\small},
+  node distance=1.5cm,
+  box/.style={draw, rectangle, align=center, text width=4cm,
+              minimum height=0.9cm, font=\small},
   lbl/.style={draw=none, fill=white, font=\scriptsize, inner sep=1pt}
 ]
+% Main vertical chain
 \node[box] (start)       {Start};
 \node[box] (obs)         [below of=start]   {Acquire $O(t)$};
 \node[box] (dep)         [below of=obs]     {Resolve $D(t) = \mathrm{Resolve}(O(t))$};
-\node[box] (eval)        [below of=dep]     {Evaluate observability \& reliability\\for each $v \in D(t)$};
+\node[box] (eval)        [below of=dep]     {Evaluate observability \& reliability for each $v \in D(t)$};
 \node[box] (check)       [below of=eval]    {All $v \in D(t)$ resolved?};
-\node[box] (constraints) [below of=check]   {Check constraints $C\bigl(O(t),\,D(t)\bigr)$};
+\node[box] (constraints) [below of=check]   {Check constraints $C(O(t),\,D(t))$};
 
-\node[box] (halt) [right=3.8cm of check]   {$A(t)=\bot$\\\textsc{halt}};
-\node[box] (exec) [below left=1.3cm and 2cm of constraints]  {$A(t)=\mathrm{True}$\\\textsc{execute}};
-\node[box] (deny) [below right=1.3cm and 2cm of constraints] {$A(t)=\mathrm{False}$\\\textsc{deny}};
+% HALT to the right — text width narrower to stay within page
+\node[box, text width=3cm] (halt) [right=1.5cm of check]
+      {$A(t)=\bot$ \\ \textsc{halt}};
+
+% EXECUTE and DENY below, symmetric — closer together
+\node[box, text width=3.2cm] (exec)
+      [below left=1.3cm and 0.8cm of constraints]
+      {$A(t)=\mathrm{True}$ \\ \textsc{execute}};
+\node[box, text width=3.2cm] (deny)
+      [below right=1.3cm and 0.8cm of constraints]
+      {$A(t)=\mathrm{False}$ \\ \textsc{deny}};
 
 \draw[->] (start)       -- (obs);
 \draw[->] (obs)         -- (dep);
 \draw[->] (dep)         -- (eval);
 \draw[->] (eval)        -- (check);
-\draw[->] (check)       -- node[lbl, left]{Yes}     (constraints);
-\draw[->] (check)       -- node[lbl, above]{No}     (halt);
+\draw[->] (check)       -- node[lbl, left]{Yes}       (constraints);
+\draw[->] (check)       -- node[lbl, above]{No}        (halt);
 \draw[->] (constraints) -- node[lbl, above left]{Valid}    (exec);
 \draw[->] (constraints) -- node[lbl, above right]{Invalid} (deny);
 \end{tikzpicture}
@@ -826,7 +835,7 @@ constructed. When it cannot be constructed, execution must not occur.}
 \draw[arrow] (state)   -- (x1);
 \draw[arrow] (state)   -- (x2);
 \draw[arrow] (state)   -- (x3);
-\draw[arrow] (prior)   -| (F);
+\draw[arrow] (prior)   |- (F);  % |- goes DOWN then RIGHT (avoids crossing state node)
 \draw[arrow] (x1)      -- (F);
 \draw[arrow] (x2)      -- (F);
 \draw[arrow] (x3)      -- (F);
@@ -861,7 +870,9 @@ constructed. When it cannot be constructed, execution must not occur.}
 ]
 \node[layer] (alloc)
       {Paper 3 --- Allocation Layer\\(Who is permitted to reach execution?)};
-\node[layer] (iml)    [below=of alloc]
+\node[layer] (comp)   [below=of alloc]
+      {Paper 4 --- Compositional Governance\\(Four dimensions are irreducible; structure cannot be collapsed)};
+\node[layer] (iml)    [below=of comp]
       {Paper 2 --- Behavioral Layer (IML)\\(Drift detection, non-identifiability monitoring)};
 \node[layer] (acp)    [below=of iml]
       {Paper 1 --- Enforcement Layer (ACP v1.30)\\(Capabilities, constraints, 6-stage execution control)};
@@ -872,7 +883,8 @@ constructed. When it cannot be constructed, execution must not occur.}
 \node[layer] (env)    [below=of ram]
       {Environment / Real State $S_r(t)$\\(Partially observable, dynamic, uncertain)};
 
-\draw[arrow] (alloc)  -- (iml);
+\draw[arrow] (alloc)  -- (comp);
+\draw[arrow] (comp)   -- (iml);
 \draw[arrow] (iml)    -- (acp);
 \draw[arrow] (acp)    -- (atomic);
 \draw[arrow] (atomic) -- (ram);
