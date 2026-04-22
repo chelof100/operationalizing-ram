@@ -463,11 +463,11 @@ condition and the recommended system action.
 
 \begin{table}[H]
 \centering
-\small
 \caption{Decision codes produced by the Runtime Authority Construction Protocol.
          Every execution attempt resolves to exactly one code.}
 \label{tab:codes}
-\begin{tabular}{@{}p{5.2cm}p{4.2cm}p{3.8cm}@{}}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lp{5cm}p{4.5cm}@{}}
 \toprule
 \textbf{Decision Code} & \textbf{Condition} & \textbf{System Action} \\
 \midrule
@@ -493,7 +493,8 @@ condition and the recommended system action.
   & Authority partially constructible
   & Reduce action scope; re-evaluate \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{proposition}[Execution Safety Invariant]
