@@ -2,7 +2,7 @@
 
 **Runtime Construction, Dependency Resolution, and Execution Gating in Autonomous Agent Systems**
 
-[![DOI](https://img.shields.io/badge/DOI-TBD-blue)](https://agentcontrolprotocol.xyz)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19698175-blue)](https://doi.org/10.5281/zenodo.19698175)
 [![arXiv](https://img.shields.io/badge/arXiv-TBD-red)](https://agentcontrolprotocol.xyz)
 [![Series](https://img.shields.io/badge/Series-Agent%20Governance-green)](https://agentcontrolprotocol.xyz)
 
@@ -32,7 +32,7 @@ The result is a unified execution model that guarantees **no action is performed
 | P3 | Fair Atomic Governance | [10.5281/zenodo.19672597](https://doi.org/10.5281/zenodo.19672597) | TBD |
 | P4 | Irreducible Multi-Scale Governance | [10.5281/zenodo.19672608](https://doi.org/10.5281/zenodo.19672608) | TBD |
 | P5 | Reconstructive Authority Model (RAM) | [10.5281/zenodo.19669430](https://doi.org/10.5281/zenodo.19669430) | TBD |
-| **P6** | **Operationalizing Reconstructive Authority** | TBD | TBD |
+| **P6** | **Operationalizing Reconstructive Authority** | [10.5281/zenodo.19698175](https://doi.org/10.5281/zenodo.19698175) | TBD |
 
 ---
 
