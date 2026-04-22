@@ -7,6 +7,7 @@
 
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
+\usepackage{cmap}           % PDF text extraction (prevents ligature encoding issues)
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[protrusion=true,expansion=false]{microtype}
@@ -133,6 +134,13 @@ A central failure mode emerges from this structure: systems execute decisions wh
 authority no longer holds at runtime. This is not a failure of decision quality, but of
 execution validity.
 
+\textit{Example.} An agent is authorized to execute a financial transfer at time $t_0$,
+when the recipient account status, transaction limits, and contextual risk indicators are
+all verified. By time $t_1$, the recipient account has been flagged and the risk profile
+has changed. The admission-time authority computed at $t_0$ no longer holds, but absent
+runtime reconstruction the system executes regardless---this is execution under stale
+authority, a structural failure that validation-only approaches cannot prevent.
+
 Reconstructive Authority (RAM), introduced in Paper~5~\cite{fernandez2026ram}, addresses
 this by redefining execution as a constructibility problem: authority must be derived from
 the current system state, not inherited from prior validation. However, while RAM
@@ -188,7 +196,10 @@ Let:
   \item $O(t) \subseteq S_r(t)$: observable state
   \item $A(t)$: execution authority
   \item $F$: authority construction function
-  \item $U$: uncertainty map over state variables
+  \item $U: V \to [0,1]$: uncertainty map over state variables; $U(v)$ quantifies the
+        degree of uncertainty for variable $v \in V$. A required variable triggers
+        $A(t) = \bot$ when $U(v) > \theta_{\mathrm{auth}}$, where
+        $\theta_{\mathrm{auth}}$ is the authority-resolution threshold.
 \end{itemize}
 
 Authority is defined as:
@@ -358,6 +369,32 @@ unless explicitly recomputed from fresh state. This property is not an engineeri
 limitation but a logical consequence of the reconstructive model: authority depends on
 state, and state changes.
 
+\subsection{Worked Example}
+\label{sec:worked-example}
+
+Consider an agent with three authority-defining variables:
+$x_1$ (account status), $x_2$ (transaction limit), $x_3$ (risk indicator).
+Let $\theta_{\mathrm{auth}} = 0.2$.
+
+\begin{itemize}
+  \item \textbf{Scenario A — \textsc{execute}:} $x_1$ observed (status: active),
+        $x_2$ observed (within bounds), $x_3$ observed with $U(x_3) = 0.1 <
+        \theta_{\mathrm{auth}}$. All dependencies resolved, constraints satisfied.
+        $A(t) = \mathrm{True}$ $\Rightarrow$ \texttt{ADMIT\_AUTHORITY\_CONSTRUCTIBLE}.
+
+  \item \textbf{Scenario B — \textsc{deny}:} $x_1$, $x_2$, $x_3$ all observable,
+        but the transaction exceeds the limit encoded in $x_2$; constraints fail.
+        $A(t) = \mathrm{False}$ $\Rightarrow$ \texttt{DENY}.
+
+  \item \textbf{Scenario C — \textsc{halt}:} $x_3$ is observable but
+        $U(x_3) = 0.35 > \theta_{\mathrm{auth}}$. The authority-defining uncertainty
+        for $x_3$ cannot be resolved. $A(t) = \bot$ $\Rightarrow$
+        \texttt{HALT\_AUTHORITY\_UNDEFINED\_UNCERTAINTY}; the Recovery Loop is invoked.
+\end{itemize}
+
+The same action class, three different outcomes---determined entirely by the
+observable state and uncertainty levels at the moment of execution.
+
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Drift Handling}
 % ─────────────────────────────────────────────────────────────────────────────
@@ -379,10 +416,34 @@ detector is required for RAM to provide safety; however, IML-triggered recomputa
 improves liveness by reducing unnecessary halts.
 \end{proposition}
 
+\medskip
+\noindent\textbf{Drift timeline.}
+\begin{center}
+\begin{tikzpicture}[>=Stealth, font=\scriptsize]
+  \draw[->] (-0.3,0) -- (11,0) node[right]{$t$};
+  \draw (0,   0.15) -- (0,   -0.15) node[below, align=center]{$t_0$\\auth\\valid};
+  \draw (2.5, 0.15) -- (2.5, -0.15) node[below, align=center]{$t_1$\\drift\\begins};
+  \draw (5,   0.15) -- (5,   -0.15) node[below, align=center]{$t_2$\\state\\diverges};
+  \draw (7.5, 0.15) -- (7.5, -0.15) node[below, align=center]{$t_3$\\\textsc{halt}\\triggered};
+  \draw (10,  0.15) -- (10,  -0.15) node[below, align=center]{$t_4$\\recovery\\resume};
+  \draw[red!65!black, thick] (2.5, 0.07) -- (7.5, 0.07)
+        node[midway, above, text=red!65!black]{stale authority window};
+  \draw[green!55!black, thick] (7.5, 0.07) -- (10, 0.07)
+        node[midway, above, text=green!55!black]{Recovery Loop};
+\end{tikzpicture}
+\end{center}
+\medskip
+
 \begin{theorem}[Stale Authority Under Drift]
 Any system that does not recompute authority at execution time will eventually execute
 under invalid authority when $S_r(t)$ changes continuously.
 \end{theorem}
+
+\textit{Intuition.} Authority derived at admission time reflects a snapshot of state
+conditions. As state changes continuously, that snapshot expires. Without recomputation,
+the system acts on authority that no longer corresponds to real conditions---an
+arbitrarily large gap between the authority-constructing state and the execution-time
+state accumulates over time.
 
 \begin{proof}
 Let $A(t_0) = \text{True}$ be authority computed at admission time. Let $S_r(t)$ change
@@ -396,25 +457,44 @@ $A(t_1) = \text{False}$. \hfill $\blacksquare$
 \section{Decision Model}
 % ─────────────────────────────────────────────────────────────────────────────
 
-Each execution attempt produces a deterministic decision code. The seven codes derived
-from the operational protocol are:
+Each execution attempt produces a deterministic decision code. Table~\ref{tab:codes}
+lists the seven codes derived from the operational protocol, along with the triggering
+condition and the recommended system action.
 
-\begin{enumerate}
-  \item \texttt{ADMIT\_AUTHORITY\_CONSTRUCTIBLE} — all required variables resolved,
-        constraints satisfied.
-  \item \texttt{HALT\_AUTHORITY\_UNDEFINED\_REQUIRED\_DEPENDENCY} — a dependency required
-        by $F$ is not observable.
-  \item \texttt{HALT\_AUTHORITY\_UNDEFINED\_UNCERTAINTY} — a required variable is
-        observable but uncertainty exceeds the threshold.
-  \item \texttt{HALT\_MISSING\_REQUIRED\_SIGNAL} — a signal required to compute $D(t)$
-        is absent.
-  \item \texttt{HALT\_REATTESTATION\_REQUIRED} — authority was previously valid but state
-        change mandates reconstruction before proceeding.
-  \item \texttt{CONTINUE\_BOUNDED\_NON\_AUTHORITY\_DRIFT} — drift detected, but it affects
-        only non-authority-defining variables; execution may proceed.
-  \item \texttt{NARROW\_PRIVILEGE\_REEVALUATE} — authority partially constructible; reduce
-        action scope and re-evaluate.
-\end{enumerate}
+\begin{table}[H]
+\centering
+\small
+\caption{Decision codes produced by the Runtime Authority Construction Protocol.
+         Every execution attempt resolves to exactly one code.}
+\label{tab:codes}
+\begin{tabular}{@{}p{5.2cm}p{4.2cm}p{3.8cm}@{}}
+\toprule
+\textbf{Decision Code} & \textbf{Condition} & \textbf{System Action} \\
+\midrule
+\texttt{ADMIT\_AUTHORITY\_CONSTRUCTIBLE}
+  & All required variables resolved; constraints satisfied
+  & Execute \\[4pt]
+\texttt{HALT\_AUTHORITY\_UNDEFINED\_REQUIRED\_DEPENDENCY}
+  & A dependency required by $F$ is not observable
+  & Halt; invoke Recovery Loop \\[4pt]
+\texttt{HALT\_AUTHORITY\_UNDEFINED\_UNCERTAINTY}
+  & Required variable observable but $U(v) > \theta_{\mathrm{auth}}$
+  & Halt; invoke Recovery Loop \\[4pt]
+\texttt{HALT\_MISSING\_REQUIRED\_SIGNAL}
+  & Signal required to compute $D(t)$ is absent
+  & Halt; request signal acquisition \\[4pt]
+\texttt{HALT\_REATTESTATION\_REQUIRED}
+  & Authority previously valid; state change mandates reconstruction
+  & Halt; recompute before proceeding \\[4pt]
+\texttt{CONTINUE\_BOUNDED\_NON\_AUTHORITY\_DRIFT}
+  & Drift detected but affects only non-authority-defining variables
+  & Execute; log drift event \\[4pt]
+\texttt{NARROW\_PRIVILEGE\_REEVALUATE}
+  & Authority partially constructible
+  & Reduce action scope; re-evaluate \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{proposition}[Execution Safety Invariant]
 If $A(t) \neq \text{True}$, no action in execution class $C$ proceeds. This is enforced
@@ -439,6 +519,15 @@ For each execution attempt, the system produces a structured audit artifact:
 The audit artifact explains not only the decision, but why specific variables became
 authority-defining and how they affected the outcome. This enables post-hoc analysis,
 regulatory compliance, and system validation without influencing execution behavior.
+
+\textbf{High-frequency considerations.} In systems where execution attempts occur at high
+rates, continuous full-artifact storage may be impractical. Sub-sampling is admissible
+provided that: (a)~every \textsc{halt} event and its decision code are logged
+unconditionally; (b)~all boundary transitions (\textsc{execute}~$\leftrightarrow$~\textsc{halt})
+are always captured; and (c)~sampled artifacts are sufficient to reconstruct the authority
+lineage for any queried point in time. Compression may be applied to the $R(t)$ discovery
+path while preserving the final decision code and per-variable uncertainty status
+$U(v)$.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Integration with the Governance Stack}
@@ -623,11 +712,33 @@ $A(t) = \bot$ regardless of the magnitude of uncertainty.
 RAM-based systems require construction of authority from current state before every
 action. Any unresolved dependency collapses authority to undefined, preventing execution.
 
+\subsection{AI Control under Intentional Subversion}
+
+Recent work on AI control under intentional subversion~\cite{greenblatt2024ai} addresses
+settings where an agent may actively attempt to circumvent oversight mechanisms. RAM
+provides a complementary and orthogonal layer. Even in systems already hardened against
+subversion, authority must still be constructed from observable state at the point of
+action. Under a subversion scenario, authority-defining variables for a contested action
+would reflect the adversarially modified state; RAM would identify missing or inconsistent
+signals and collapse authority to $\bot$, triggering \textsc{halt} independently of
+whether the control layer detected the subversion attempt.
+
+Thus RAM can function as an additional execution gate on top of control-hardened systems:
+subversion attempts that alter authority-relevant state are caught at the construction
+layer rather than requiring the control layer to anticipate every specific manipulation
+strategy.
+
 \begin{theorem}[Authority Validity]
 \label{thm:validity}
 Any system that permits execution under incomplete authority-defining state cannot
 guarantee that no action proceeds without constructible authority.
 \end{theorem}
+
+\textit{Intuition.} Permitting execution when authority-defining variables are unobservable
+is structurally equivalent to executing under undefined authority. The safety property
+cannot be derived probabilistically from partial information; it requires that all required
+variables be resolved. The dependency resolution step in Section~\ref{sec:dep-resolution}
+closes this gap by construction.
 
 \begin{proof}
 Let a system $\mathcal{S}$ permit execution when $D(t) \not\subseteq O(t)$ for some
@@ -824,7 +935,8 @@ constructed. When it cannot be constructed, execution must not occur.}
 
 % ── Evaluation gate ───────────────────────────────────────────────────────────
 \node[box, minimum width=5.5cm] (gate) at (0,-8)
-      {Authority Evaluation\\All $v \in A_d(t)$ observable \& reliable?};
+      {Authority Evaluation\\All $v \in A_d(t)$ observable \& reliable?\\
+       \footnotesize$A(t) \in \{\mathrm{True},\,\mathrm{False},\,\bot\}$};
 
 % ── Outcomes ─────────────────────────────────────────────────────────────────
 \node[box, minimum width=3.2cm] (exec) at (-4,-10) {$A(t)=\mathrm{True}$\\\textsc{execute}};
@@ -934,8 +1046,10 @@ constructed. When it cannot be constructed, execution must not occur.}
 \draw[->] (signal)      -- (trigger);
 \draw[->] (trigger)     -- (augment);
 \draw[->] (augment)     -- (reconstruct);
-\draw[->] (reconstruct) -- node[lbl, above left]{$A(t')\neq\bot$}  (resume);
-\draw[->] (reconstruct) -- node[lbl, above right]{$A(t')=\bot$} (remain);
+\draw[->, green!60!black, thick] (reconstruct)
+      -- node[lbl, above left]{$A(t')\neq\bot$} (resume);
+\draw[->, red!65!black, thick] (reconstruct)
+      -- node[lbl, above right]{$A(t')=\bot$} (remain);
 
 % Feedback arc from "Remain HALT" back to "Signal Extraction"
 \draw[->] (remain.east) -- ++(1.4,0) |- (signal.east)
