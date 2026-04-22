@@ -709,33 +709,34 @@ constructed. When it cannot be constructed, execution must not occur.}
 \centering
 \begin{tikzpicture}[
   >=Stealth,
-  node distance=1.3cm,
-  every node/.style={draw, rectangle, align=center,
-                     minimum width=4.2cm, minimum height=0.85cm, font=\small}
+  node distance=1.4cm,
+  box/.style={draw, rectangle, align=center,
+              minimum width=5.5cm, minimum height=0.9cm, font=\small},
+  lbl/.style={draw=none, fill=white, font=\scriptsize, inner sep=1pt}
 ]
-\node (start)       {Start};
-\node (obs)         [below of=start]  {Acquire $O(t)$};
-\node (dep)         [below of=obs]    {Resolve $R(t) = \mathrm{Resolve}(O(t))$};
-\node (eval)        [below of=dep]    {Evaluate observability \\ \& reliability per $v \in R(t)$};
-\node (check)       [below of=eval]   {All $v \in R(t)$ resolved?};
-\node (constraints) [below of=check]  {Check constraints $C(O(t), R(t))$};
+\node[box] (start)       {Start};
+\node[box] (obs)         [below of=start]   {Acquire $O(t)$};
+\node[box] (dep)         [below of=obs]     {Resolve $D(t) = \mathrm{Resolve}(O(t))$};
+\node[box] (eval)        [below of=dep]     {Evaluate observability \& reliability\\for each $v \in D(t)$};
+\node[box] (check)       [below of=eval]    {All $v \in D(t)$ resolved?};
+\node[box] (constraints) [below of=check]   {Check constraints $C\bigl(O(t),\,D(t)\bigr)$};
 
-\node (exec) [below left=1.2cm and 2.2cm of constraints]  {$A(t)=\text{True}$ \\ \textsc{execute}};
-\node (deny) [below right=1.2cm and 2.2cm of constraints] {$A(t)=\text{False}$ \\ \textsc{deny}};
-\node (halt) [right=3.5cm of check]                       {$A(t)=\bot$ \\ \textsc{halt}};
+\node[box] (halt) [right=3.8cm of check]   {$A(t)=\bot$\\\textsc{halt}};
+\node[box] (exec) [below left=1.3cm and 2cm of constraints]  {$A(t)=\mathrm{True}$\\\textsc{execute}};
+\node[box] (deny) [below right=1.3cm and 2cm of constraints] {$A(t)=\mathrm{False}$\\\textsc{deny}};
 
-\draw[->] (start) -- (obs);
-\draw[->] (obs)   -- (dep);
-\draw[->] (dep)   -- (eval);
-\draw[->] (eval)  -- (check);
-\draw[->] (check) -- node[left,draw=none]{Yes} (constraints);
-\draw[->] (check) -- node[above,draw=none]{No}  (halt);
-\draw[->] (constraints) -- node[left,draw=none]{Valid}   (exec);
-\draw[->] (constraints) -- node[right,draw=none]{Invalid} (deny);
+\draw[->] (start)       -- (obs);
+\draw[->] (obs)         -- (dep);
+\draw[->] (dep)         -- (eval);
+\draw[->] (eval)        -- (check);
+\draw[->] (check)       -- node[lbl, left]{Yes}     (constraints);
+\draw[->] (check)       -- node[lbl, above]{No}     (halt);
+\draw[->] (constraints) -- node[lbl, above left]{Valid}    (exec);
+\draw[->] (constraints) -- node[lbl, above right]{Invalid} (deny);
 \end{tikzpicture}
-\caption{Runtime authority construction flow. Execution proceeds only if authority can
-         be constructed from current state. Unresolved dependencies collapse the decision
-         to \textsc{halt}.}
+\caption{Runtime authority construction flow. Execution proceeds only if all
+         authority-defining dependencies are observable and constraints hold. An
+         unresolved dependency immediately yields \textsc{halt}.}
 \label{fig:flow}
 \end{figure}
 
@@ -744,18 +745,30 @@ constructed. When it cannot be constructed, execution must not occur.}
 \centering
 \begin{tikzpicture}[
   >=Stealth,
-  node distance=1.5cm,
-  every node/.style={draw, rectangle, align=center,
-                     minimum width=2.8cm, minimum height=0.8cm, font=\small}
+  box/.style={draw, rectangle, align=center,
+              minimum height=0.85cm, font=\small},
+  lbl/.style={draw=none, fill=white, font=\scriptsize, inner sep=1pt}
 ]
-\node (state) {$O(t)$};
+% State node at top
+\node[box, minimum width=4cm] (state) at (0,0) {Observable State $O(t)$};
 
-\node (x1) [below left=1.2cm and 1.5cm of state]  {$x_1$};
-\node (x2) [below=1.2cm of state]                  {$x_2$};
-\node (x3) [below right=1.2cm and 1.5cm of state]  {$x_3$};
+% Three variable nodes
+\node[box, minimum width=1.8cm] (x1) at (-3,-2)  {$x_1$};
+\node[box, minimum width=1.8cm] (x2) at ( 0,-2)  {$x_2$};
+\node[box, minimum width=1.8cm] (x3) at ( 3,-2)  {$x_3$};
 
-\node (F)    [below=1.2cm of x2, minimum width=3.8cm] {Construction Function $F$ \\ $\Rightarrow R(t)$};
-\node (auth) [below=1.2cm of F,  minimum width=3.8cm] {Authority $A(t)$};
+% Uncertainty overlay
+\node[box, minimum width=2.5cm, dashed] (ux2) at (0.1,-2.05) {};
+\node[box, minimum width=2.5cm, dashed] (ux3) at (3.1,-2.05) {};
+\node[draw=none, font=\scriptsize, text=gray] at (1.8,-1.5) {$U(v)$ applied};
+
+% Construction function
+\node[box, minimum width=5cm] (F) at (0,-4)
+      {Construction Function $F$ \\ $\Rightarrow R(t)$ (required set)};
+
+% Authority output
+\node[box, minimum width=5cm] (auth) at (0,-5.8)
+      {Authority $A(t) \in \{\mathrm{True},\,\mathrm{False},\,\bot\}$};
 
 \draw[->] (state) -- (x1);
 \draw[->] (state) -- (x2);
@@ -763,94 +776,101 @@ constructed. When it cannot be constructed, execution must not occur.}
 \draw[->] (x1) -- (F);
 \draw[->] (x2) -- (F);
 \draw[->] (x3) -- (F);
-\draw[->] (F)  -- (auth);
+\draw[->] (F)  -- node[lbl, right]{promotion} (auth);
 \end{tikzpicture}
-\caption{Dynamic dependency resolution. Authority is constructed from runtime-discovered
-         dependencies over observable state. Dependencies emerge from $F$, not from a
-         static definition.}
+\caption{Dynamic dependency resolution. Observable state $O(t)$ feeds a runtime
+         dependency discovery process through $F$. Uncertainty $U(v)$ is evaluated
+         per variable. Authority $A(t)$ is constructed, not inherited.}
 \label{fig:deps}
 \end{figure}
 
 % ── Figure 3 — Full RAM Protocol Diagram ─────────────────────────────────────
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
   >=Stealth,
   node distance=1.8cm,
-  every node/.style={draw, rectangle, align=center, minimum height=0.9cm, font=\small},
+  box/.style={draw, rectangle, align=center, minimum height=0.9cm, font=\small},
+  lbl/.style={draw=none, fill=white, font=\scriptsize, inner sep=1pt},
   arrow/.style={->, thick}
 ]
-% STATE LAYER
-\node (state)  [minimum width=4.5cm] {Observable State $O(t)$};
-\node (uncert) [right=4.5cm of state, minimum width=4.5cm] {Uncertainty Map $U(v)$};
+% ── Top row: inputs ──────────────────────────────────────────────────────────
+\node[box, minimum width=4.5cm] (state)  at (0,0)    {Observable State $O(t)$};
+\node[box, minimum width=4.5cm] (uncert) at (5.5,0)  {Uncertainty Map $U(v)$};
+\node[box, minimum width=3.5cm] (prior)  at (-6,0)   {Policy Prior $P_0(C)$\\(candidates only)};
 
-% VARIABLE NODES
-\node (x1) [below left=1.5cm and 1.5cm of state]  {$x_1$};
-\node (x2) [below=1.5cm of state]                  {$x_2$};
-\node (x3) [below right=1.5cm and 1.5cm of state]  {$x_3$};
+% ── Variable nodes ────────────────────────────────────────────────────────────
+\node[box, minimum width=1.8cm] (x1) at (-2,-2)  {$x_1$};
+\node[box, minimum width=1.8cm] (x2) at ( 0,-2)  {$x_2$};
+\node[box, minimum width=1.8cm] (x3) at ( 2,-2)  {$x_3$};
 
-\node (prior) [left=4cm of x2, minimum width=3.5cm]
-              {Policy Prior $P_0(C)$ \\ (candidates only)};
+% ── Construction function ─────────────────────────────────────────────────────
+\node[box, minimum width=5.5cm] (F) at (0,-4)
+      {Construction Function $F$\\$\Rightarrow R(t)$ (required set)};
 
-% CONSTRUCTION
-\node (F) [below=2.2cm of x2, minimum width=5.5cm]
-          {Construction Function $F$ \\ $\Rightarrow R(t)$ (required set)};
+% ── Authority-defining set ────────────────────────────────────────────────────
+\node[box, minimum width=5.5cm] (authset) at (0,-6)
+      {Authority-defining variables $A_d(t)$};
 
-% AUTHORITY SET
-\node (authset) [below=1.5cm of F, minimum width=5.5cm]
-                {Authority-defining variables $A_d(t)$};
+% ── Evaluation gate ───────────────────────────────────────────────────────────
+\node[box, minimum width=5.5cm] (gate) at (0,-8)
+      {Authority Evaluation\\All $v \in A_d(t)$ observable \& reliable?};
 
-% GATE
-\node (gate) [below=1.5cm of authset, minimum width=5.5cm]
-             {Authority Evaluation \\ All $v \in A_d(t)$ observable \& reliable?};
+% ── Outcomes ─────────────────────────────────────────────────────────────────
+\node[box, minimum width=3.2cm] (exec) at (-4,-10) {$A(t)=\mathrm{True}$\\\textsc{execute}};
+\node[box, minimum width=3.2cm] (deny) at ( 0,-10) {$A(t)=\mathrm{False}$\\\textsc{deny}};
+\node[box, minimum width=3.2cm] (halt) at ( 4,-10) {$A(t)=\bot$\\\textsc{halt}};
 
-% OUTCOMES
-\node (exec) [below left=1.5cm and 2.5cm of gate,  minimum width=3.5cm]
-             {$A(t)=\text{True}$ \\ \textsc{execute}};
-\node (deny) [below=1.5cm of gate,                  minimum width=3.5cm]
-             {$A(t)=\text{False}$ \\ \textsc{deny}};
-\node (halt) [below right=1.5cm and 2.5cm of gate,  minimum width=3.5cm]
-             {$A(t)=\bot$ \\ \textsc{halt}};
-
+% ── Arrows ───────────────────────────────────────────────────────────────────
 \draw[arrow] (state)   -- (x1);
 \draw[arrow] (state)   -- (x2);
 \draw[arrow] (state)   -- (x3);
-\draw[arrow] (prior)   -- (F);
+\draw[arrow] (prior)   -| (F);
 \draw[arrow] (x1)      -- (F);
 \draw[arrow] (x2)      -- (F);
 \draw[arrow] (x3)      -- (F);
-\draw[arrow] (uncert)  -- (x3);
-\draw[arrow] (uncert)  -- (x2);
-\draw[arrow] (F)       -- node[right,draw=none]{promotion} (authset);
+\draw[arrow] (uncert)  |- (x3);
+\draw[arrow] (uncert)  |- (x2);
+\draw[arrow] (F)       -- node[lbl, right]{promotion} (authset);
 \draw[arrow] (authset) -- (gate);
-\draw[arrow] (gate)    -- node[left,draw=none]{valid}      (exec);
-\draw[arrow] (gate)    -- node[right,draw=none]{invalid}   (deny);
-\draw[arrow] (gate)    -- node[above,draw=none]{unresolved}(halt);
-\end{tikzpicture}
+\draw[arrow] (gate)    -- node[lbl, left]{valid}      (exec);
+\draw[arrow] (gate)    -- node[lbl, right]{invalid}   (deny);
+\draw[arrow] (gate)    -- node[lbl, right]{unresolved}(halt);
+\end{tikzpicture}%
+}
 \caption{Full RAM protocol diagram. Observable state $O(t)$ and uncertainty $U(v)$ feed
          dynamic dependency resolution through $F$, producing the required set $R(t)$ and
          authority-defining variables $A_d(t)$. Execution proceeds only if all required
          variables are observable and reliable. Policy prior $P_0(C)$ contributes
-         candidates but cannot authorize execution independently.}
+         candidates only and cannot authorize execution independently.}
 \label{fig:fullram}
-\end{figure*}
+\end{figure}
 
 % ── Figure 4 — Multi-Layer Governance Stack ───────────────────────────────────
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
   >=Stealth,
   node distance=1.2cm,
-  every node/.style={draw, rectangle, align=center,
-                     minimum width=10cm, minimum height=0.9cm, font=\small},
-  arrow/.style={->, thick}
+  layer/.style={draw, rectangle, align=center,
+                minimum width=11cm, minimum height=1cm, font=\small},
+  arrow/.style={->, thick},
+  fback/.style={->, thick, dashed}
 ]
-\node (alloc)  {Paper 3 --- Allocation Layer \\ (Who is permitted to reach execution?)};
-\node (iml)    [below=of alloc]  {Paper 2 --- Behavioral Layer (IML) \\ (Drift detection, non-identifiability monitoring)};
-\node (acp)    [below=of iml]    {Paper 1 --- Enforcement Layer (ACP v1.30) \\ (Capabilities, constraints, execution control)};
-\node (atomic) [below=of acp]    {Paper 0 --- Atomic Execution Layer \\ (Decision-action binding, TOCTOU elimination)};
-\node (ram)    [below=of atomic] {Papers 5--6 --- Reconstructive Authority (RAM) \\ (Runtime authority construction: $A(t) = F(O(t))$)};
-\node (env)    [below=of ram]    {Environment / Real State $S_r(t)$ \\ (Partially observable, dynamic, uncertain)};
+\node[layer] (alloc)
+      {Paper 3 --- Allocation Layer\\(Who is permitted to reach execution?)};
+\node[layer] (iml)    [below=of alloc]
+      {Paper 2 --- Behavioral Layer (IML)\\(Drift detection, non-identifiability monitoring)};
+\node[layer] (acp)    [below=of iml]
+      {Paper 1 --- Enforcement Layer (ACP v1.30)\\(Capabilities, constraints, 6-stage execution control)};
+\node[layer] (atomic) [below=of acp]
+      {Paper 0 --- Atomic Execution Layer\\(Decision-action binding, TOCTOU elimination)};
+\node[layer] (ram)    [below=of atomic]
+      {Papers 5--6 --- Reconstructive Authority (RAM)\\Runtime: $A(t)=F(O(t))$ \quad Execute iff $A(t)$ constructible};
+\node[layer] (env)    [below=of ram]
+      {Environment / Real State $S_r(t)$\\(Partially observable, dynamic, uncertain)};
 
 \draw[arrow] (alloc)  -- (iml);
 \draw[arrow] (iml)    -- (acp);
@@ -858,55 +878,61 @@ constructed. When it cannot be constructed, execution must not occur.}
 \draw[arrow] (atomic) -- (ram);
 \draw[arrow] (ram)    -- (env);
 
-% Feedback loops
-\draw[arrow] (env.east) .. controls +(3.5,0) and +(3.5,0) .. (ram.east);
-\draw[arrow] (env.east) .. controls +(4.5,0) and +(4.5,0) .. (iml.east);
-
-% Execution gate annotation
-\node (gate) [right=5cm of ram, minimum width=4.5cm, draw]
-             {Execution Gate \\ Execute iff $A(t)$ is constructible};
-\draw[arrow] (ram) -- (gate);
-\end{tikzpicture}
+% Feedback arrows on the LEFT side (safe margin)
+\draw[fback] (env.west)   -- ++(-1.5,0) |- (ram.west)
+             node[pos=0.25, left, draw=none, font=\scriptsize]{$S_r(t)$};
+\draw[fback] (env.west)   -- ++(-2.8,0) |- (iml.west)
+             node[pos=0.15, left, draw=none, font=\scriptsize]{drift signal};
+\end{tikzpicture}%
+}
 \caption{Multi-layer governance stack integrating Papers~0--5 with runtime reconstructive
          authority (Paper~6). Allocation controls access, IML detects drift, ACP enforces
-         constraints, atomic execution ensures decision binding, and RAM determines whether
-         execution is valid at runtime. The environment continuously feeds state back into
-         the system, requiring authority to be reconstructed before every action.}
+         constraints, atomic execution ensures decision binding, and RAM determines
+         execution validity at runtime. Dashed arrows show feedback: the environment
+         continuously feeds state back, requiring authority reconstruction before every
+         action.}
 \label{fig:stack}
-\end{figure*}
+\end{figure}
 
 % ── Figure 5 — Recovery Loop Dynamics ────────────────────────────────────────
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
   >=Stealth,
-  node distance=2cm,
-  every node/.style={font=\small}
+  node distance=1.5cm,
+  box/.style={draw, rectangle, align=center,
+              minimum width=4.8cm, minimum height=0.9cm, font=\small},
+  lbl/.style={draw=none, fill=white, font=\scriptsize, inner sep=1pt}
 ]
-\node (halt)       [draw, rectangle, align=center] {\textsc{halt} \\ $A(t)=\bot$};
-\node (signal)     [draw, rectangle, right of=halt]       {Signal Extraction};
-\node (trigger)    [draw, rectangle, right of=signal]     {IML Trigger};
-\node (augment)    [draw, rectangle, right of=trigger]    {State Augmentation};
-\node (reconstruct)[draw, rectangle, right of=augment]    {Recompute $A(t')$};
+% Main vertical chain
+\node[box] (halt)        {\textsc{halt} \\ $A(t)=\bot$};
+\node[box] (signal)      [below of=halt]        {Signal Extraction};
+\node[box] (trigger)     [below of=signal]      {IML Trigger};
+\node[box] (augment)     [below of=trigger]     {State Augmentation};
+\node[box] (reconstruct) [below of=augment]     {Recompute $A(t')$};
 
-\node (resume) [draw, rectangle, above of=reconstruct, yshift=0.8cm]
-               {\textsc{resume}};
-\node (remain) [draw, rectangle, below of=reconstruct, yshift=-0.8cm]
-               {Remain \textsc{halt}};
+% Outcome branches
+\node[box, minimum width=3.5cm] (resume)
+      [below left=1.3cm and 1.8cm of reconstruct]  {\textsc{resume}};
+\node[box, minimum width=3.5cm] (remain)
+      [below right=1.3cm and 1.8cm of reconstruct] {Remain \textsc{halt}};
 
 \draw[->] (halt)        -- (signal);
 \draw[->] (signal)      -- (trigger);
 \draw[->] (trigger)     -- (augment);
 \draw[->] (augment)     -- (reconstruct);
-\draw[->] (reconstruct) -- (resume);
-\draw[->] (reconstruct) -- (remain);
-\draw[->] (remain)      |- (signal);
+\draw[->] (reconstruct) -- node[lbl, above left]{$A(t')\neq\bot$}  (resume);
+\draw[->] (reconstruct) -- node[lbl, above right]{$A(t')=\bot$} (remain);
+
+% Feedback arc from "Remain HALT" back to "Signal Extraction"
+\draw[->] (remain.east) -- ++(1.4,0) |- (signal.east)
+          node[pos=0.3, right, draw=none, font=\scriptsize]{retry};
 \end{tikzpicture}
 \caption{Recovery Loop under RAM. Upon \textsc{halt}, the system identifies missing
-         authority components, triggers re-evaluation via IML, augments state (or reverts
-         to the last atomically consistent state per Paper~0), and attempts
-         reconstruction. Execution resumes only if authority becomes constructible;
-         otherwise the system remains in \textsc{halt}.}
+         authority components, triggers re-evaluation via IML, augments state (or
+         reverts to the last atomically consistent state per Paper~0), and attempts
+         reconstruction. Execution resumes only when $A(t')\neq\bot$; otherwise
+         the loop retries.}
 \label{fig:recovery}
 \end{figure}
 
