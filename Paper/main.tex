@@ -840,7 +840,8 @@ constructed. When it cannot be constructed, execution must not occur.}
 \draw[arrow] (x2)      -- (F);
 \draw[arrow] (x3)      -- (F);
 \draw[arrow] (uncert)  |- (x3);
-\draw[arrow] (uncert)  |- (x2);
+% Route U(v)->x2 ABOVE x3 (x3 north ≈ y=-1.55; this path runs at y=-1)
+\draw[arrow] (uncert.south) -- ++(0,-1) -| (x2);
 \draw[arrow] (F)       -- node[lbl, right]{promotion} (authset);
 \draw[arrow] (authset) -- (gate);
 \draw[arrow] (gate)    -- node[lbl, left]{valid}      (exec);
@@ -870,24 +871,24 @@ constructed. When it cannot be constructed, execution must not occur.}
 ]
 \node[layer] (alloc)
       {Paper 3 --- Allocation Layer\\(Who is permitted to reach execution?)};
-\node[layer] (comp)   [below=of alloc]
-      {Paper 4 --- Compositional Governance\\(Four dimensions are irreducible; structure cannot be collapsed)};
-\node[layer] (iml)    [below=of comp]
+\node[layer] (iml)    [below=of alloc]
       {Paper 2 --- Behavioral Layer (IML)\\(Drift detection, non-identifiability monitoring)};
 \node[layer] (acp)    [below=of iml]
       {Paper 1 --- Enforcement Layer (ACP v1.30)\\(Capabilities, constraints, 6-stage execution control)};
 \node[layer] (atomic) [below=of acp]
       {Paper 0 --- Atomic Execution Layer\\(Decision-action binding, TOCTOU elimination)};
-\node[layer] (ram)    [below=of atomic]
+\node[layer] (comp)   [below=of atomic]
+      {Paper 4 --- Compositional Validation\\(P0--P3 are irreducible; governance structure is complete)};
+\node[layer] (ram)    [below=of comp]
       {Papers 5--6 --- Reconstructive Authority (RAM)\\Runtime: $A(t)=F(O(t))$ \quad Execute iff $A(t)$ constructible};
 \node[layer] (env)    [below=of ram]
       {Environment / Real State $S_r(t)$\\(Partially observable, dynamic, uncertain)};
 
-\draw[arrow] (alloc)  -- (comp);
-\draw[arrow] (comp)   -- (iml);
+\draw[arrow] (alloc)  -- (iml);
 \draw[arrow] (iml)    -- (acp);
 \draw[arrow] (acp)    -- (atomic);
-\draw[arrow] (atomic) -- (ram);
+\draw[arrow] (atomic) -- (comp);
+\draw[arrow] (comp)   -- (ram);
 \draw[arrow] (ram)    -- (env);
 
 % Feedback arrows on the LEFT side (safe margin)
