@@ -2,7 +2,7 @@
 %  Paper 6 — Operationalizing Reconstructive Authority
 %  Runtime Construction, Dependency Resolution, and Execution Gating
 %  in Autonomous Agent Systems
-%  Agent Governance Series — Paper 6 of 7
+%  Part of an ongoing research series on agent governance
 % ─────────────────────────────────────────────────────────────────────────────
 
 \documentclass[11pt]{article}
@@ -90,29 +90,17 @@ P6 & \textbf{Operationalizing Reconstructive Authority}          & 10.5281/zenod
 % ─────────────────────────────────────────────────────────────────────────────
 
 \begin{abstract}
-Autonomous agent systems fail not only due to incorrect decisions, but due to executing
-decisions whose authority no longer holds at runtime. Prior work established that atomicity
-alone cannot guarantee correct execution under dynamic conditions, and that behavioral drift
-is structurally unavoidable.
+Autonomous agent systems fail not only due to incorrect decisions, but due to executing decisions whose authority no longer holds at runtime. Prior work defined Reconstructive Authority (RAM) as a condition for valid execution: actions are permitted only if authority can be constructed from current state.
 
-In this paper, we operationalize Reconstructive Authority (RAM) as a runtime criterion for
-execution: an action is permitted only if authority can be constructed from current state.
-This introduces a third execution state beyond admit/deny: \textsc{halt}, representing
-undefined authority due to insufficient or inconsistent observability.
+This paper addresses a distinct problem: how to enforce this condition in a running system.
 
-We formalize RAM as a projection over state space, prove that execution without runtime
-reconstruction admits inevitable failure under drift accumulation, and show that authority
-is a discontinuous property with boundary sensitivity to small state perturbations.
+We introduce a runtime execution model in which authority is evaluated at action time and execution is conditioned on its constructibility. This extends the execution state space beyond admit/deny with a third state, \textit{halt}, representing cases where authority is undefined due to incomplete or uncertain observability.
 
-To complete the execution model, we introduce a Recovery Loop that integrates drift
-detection (IML) and execution control (ACP), enabling systems to transition from
-\textsc{halt} to safe execution when observability gaps are resolved. We prove conditional
-liveness: if authority-defining variables become observable, execution will eventually
-resume.
+We define a concrete execution protocol including dynamic dependency resolution, authority reconstruction, and explicit decision semantics. We further introduce a Recovery Loop that integrates drift detection (IML) with execution control (ACP), allowing the system to suspend execution, acquire missing information, and re-attempt authority reconstruction.
 
-The result is a unified execution model that guarantees no action is performed without
-constructible authority, while maintaining progress when safety conditions can be
-re-established.
+We show that this model guarantees safety—no action is executed without constructible authority—and conditional liveness: execution resumes when authority-defining variables become observable.
+
+This work operationalizes reconstructive authority as a runtime enforcement mechanism, providing the execution semantics required to apply RAM in real systems.
 \end{abstract}
 
 \tableofcontents
@@ -124,13 +112,12 @@ re-established.
 
 Autonomous systems operate in environments where the conditions under which decisions are
 made do not remain stable until execution. This gap between decision and execution is not
-incidental; it is structural. Prior work in this series showed that separating evaluation
-from execution introduces unavoidable inconsistencies~\cite{fernandez2026a}, that
-enforcement alone cannot detect behavioral drift~\cite{fernandez2026c}, and that governance
-requires multiple orthogonal layers to remain coherent under limited
-observability~\cite{fernandez2026comp}.
+incidental; it is structural. Prior work has shown that separating evaluation from execution
+introduces inconsistencies~\cite{fernandez2026a,lamport1978time}, that enforcement alone cannot detect
+behavioral drift~\cite{fernandez2026c}, and that maintaining coherent behavior under limited
+observability requires multiple interacting layers~\cite{fernandez2026comp}.
 
-A central failure mode emerges from this structure: systems execute decisions whose
+A central failure mode follows from this structure: systems execute decisions whose
 authority no longer holds at runtime. This is not a failure of decision quality, but of
 execution validity.
 
@@ -147,7 +134,7 @@ the current system state, not inherited from prior validation. However, while RA
 establishes the theoretical condition for valid execution, it does not define how such a
 condition is enforced in a running system.
 
-\textit{This paper provides that operationalization.}
+\textit{This paper provides that operationalization. This paper does not extend the theoretical definition of Reconstructive Authority. Instead, it addresses a distinct problem: how to enforce authority reconstruction as a runtime execution protocol.}
 
 We introduce a runtime execution model in which authority is evaluated at the point of
 action, and execution is conditioned on its constructibility. This leads to a fundamental
