@@ -29,8 +29,7 @@ The result is a unified execution model that guarantees **no action is performed
 | P0 | Atomic Decision Boundaries | [10.5281/zenodo.19670649](https://doi.org/10.5281/zenodo.19670649) | [2604.17511](https://arxiv.org/abs/2604.17511) |
 | P1 | Agent Control Protocol (ACP) | [10.5281/zenodo.19672575](https://doi.org/10.5281/zenodo.19672575) | [2603.18829](https://arxiv.org/abs/2603.18829) |
 | P2 | From Admission to Invariants (IML) | [10.5281/zenodo.19672589](https://doi.org/10.5281/zenodo.19672589) | [2604.17517](https://arxiv.org/abs/2604.17517) |
-| P3 | Fair Atomic Governance | [10.5281/zenodo.19672597](https://doi.org/10.5281/zenodo.19672597) | TBD |
-| P4 | Irreducible Multi-Scale Governance | [10.5281/zenodo.19672608](https://doi.org/10.5281/zenodo.19672608) | TBD |
+| P3/4 | Irreducible Governance Structure | [10.5281/zenodo.19672597](https://doi.org/10.5281/zenodo.19672597) | TBD |
 | P5 | Reconstructive Authority Model (RAM) | [10.5281/zenodo.19669430](https://doi.org/10.5281/zenodo.19669430) | TBD |
 | **P6** | **Operationalizing Reconstructive Authority** | [10.5281/zenodo.19699460](https://doi.org/10.5281/zenodo.19699460) | TBD |
 
@@ -56,9 +55,7 @@ The result is a unified execution model that guarantees **no action is performed
 Paper/
 ├── main.tex          — LaTeX source
 └── references.bib    — Bibliography (P0–P6 + related work)
-Figures/              — TikZ figures (generated from main.tex)
 README.md
-SPRINT-README.md      — Sprint context for session continuity
 ```
 
 ---
