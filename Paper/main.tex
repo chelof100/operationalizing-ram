@@ -77,8 +77,7 @@
 P0 & Atomic Decision Boundaries~\cite{fernandez2026a}           & 10.5281/zenodo.19670649 & 2604.17511 \\
 P1 & Agent Control Protocol (ACP)~\cite{fernandez2026b}         & 10.5281/zenodo.19672575 & 2603.18829 \\
 P2 & From Admission to Invariants (IML)~\cite{fernandez2026c}   & 10.5281/zenodo.19672589 & 2604.17517 \\
-P3 & Fair Atomic Governance~\cite{fairgov26}                    & 10.5281/zenodo.19672597 & TBD \\
-P4 & Irreducible Multi-Scale Governance~\cite{fernandez2026comp} & 10.5281/zenodo.19672608 & TBD \\
+P3/4 & Irreducible Governance Structure~\cite{fernandez2026govstr} & 10.5281/zenodo.19672597 & TBD \\
 P5 & Reconstructive Authority Model (RAM)~\cite{fernandez2026ram} & 10.5281/zenodo.19669430 & TBD \\
 P6 & \textbf{Operationalizing Reconstructive Authority}          & 10.5281/zenodo.19699460 & TBD \\
 \bottomrule
@@ -92,7 +91,7 @@ P6 & \textbf{Operationalizing Reconstructive Authority}          & 10.5281/zenod
 \begin{abstract}
 Autonomous agent systems fail not only due to incorrect decisions, but due to executing decisions whose authority no longer holds at runtime. Prior work defined Reconstructive Authority (RAM) as a condition for valid execution: actions are permitted only if authority can be constructed from current state.
 
-This paper addresses a distinct problem: how to enforce this condition in a running system.
+This paper addresses enforcement at runtime: how to enforce this condition in a running system.
 
 We introduce a runtime execution model in which authority is evaluated at action time and execution is conditioned on its constructibility. This extends the execution state space beyond admit/deny with a third state, \textit{halt}, representing cases where authority is undefined due to incomplete or uncertain observability.
 
@@ -115,7 +114,7 @@ made do not remain stable until execution. This gap between decision and executi
 incidental; it is structural. Prior work has shown that separating evaluation from execution
 introduces inconsistencies~\cite{fernandez2026a,lamport1978time}, that enforcement alone cannot detect
 behavioral drift~\cite{fernandez2026c}, and that maintaining coherent behavior under limited
-observability requires multiple interacting layers~\cite{fernandez2026comp}.
+observability requires multiple interacting layers~\cite{fernandez2026govstr}.
 
 A central failure mode follows from this structure: systems execute decisions whose
 authority no longer holds at runtime. This is not a failure of decision quality, but of
@@ -197,35 +196,67 @@ Authority is defined as:
 Since $S_r(t)$ is not fully observable, the system operates on $O(t)$ and must determine
 whether authority can be constructed.
 
-\begin{definition}[Constructible Authority]
-Authority is constructible at time $t$ if all variables required by $F$ can be derived
-from observable and reliable state components within $O(t)$.
+\begin{definition}[Authority Constructibility]
+\label{def:constructible}
+Let $a$ be an action and $D(a)$ the set of variables required to evaluate authority
+for $a$. Authority is \emph{constructible} in state $O(t)$ if and only if all three
+conditions hold:
+\begin{enumerate}
+  \item \textbf{Observability:} all dependencies $d \in D(a)$ are observable in $O(t)$,
+        i.e.\ $U(d) \leq \theta_{\mathrm{auth}}$.
+  \item \textbf{Closure:} the dependency graph induced by $D(a)$ is closed under
+        resolution (no unresolved upstream dependencies remain).
+  \item \textbf{Consistency:} no invariant violations are detected over the evaluated
+        dependencies.
+\end{enumerate}
+Formally:
+\[
+  \mathrm{Constructible}(a,\,O(t)) \;\triangleq\;
+  \mathrm{Observable}(D(a),\,O(t)) \;\land\;
+  \mathrm{Closed}(D(a)) \;\land\;
+  \mathrm{Consistent}(D(a))
+\]
+If this condition holds, authority can be evaluated as either valid or invalid.
+Otherwise, authority is \emph{non-evaluable}.
 \end{definition}
 
 \begin{definition}[Undefined Authority]
-If any required variable is unobservable, uncertain beyond acceptable bounds, or missing,
-then:
+If $\mathrm{Constructible}(a,\,O(t))$ does not hold (i.e.\ any required variable is
+unobservable, the dependency graph is open, or invariants are violated), then:
 \[
   A(t) = \bot
 \]
 and execution must not proceed.
 \end{definition}
 
-\begin{definition}[Execution State Space]
-The execution gate admits exactly three outcomes:
+\begin{definition}[Execution State]
+\label{def:execstate}
+Given an action $a$ and system state $O(t)$, the execution outcome is:
 \[
-  \mathrm{gate}(t) \in \{\textsc{execute},\; \textsc{deny},\; \textsc{halt}\}
+  \mathrm{ExecState}(a,\,O(t)) =
+  \begin{cases}
+    \textsc{execute} & \text{if } \mathrm{Constructible}(a,\,O(t)) \land A(t) = \mathrm{True} \\
+    \textsc{deny}    & \text{if } \mathrm{Constructible}(a,\,O(t)) \land A(t) = \mathrm{False} \\
+    \textsc{halt}    & \text{if } \lnot\,\mathrm{Constructible}(a,\,O(t))
+  \end{cases}
 \]
-where \textsc{halt} corresponds to $A(t) = \bot$.
+The execution gate therefore admits exactly three outcomes:
+$\mathrm{gate}(t) \in \{\textsc{execute},\; \textsc{deny},\; \textsc{halt}\}$.
 \end{definition}
 
 \textbf{The \textsc{halt} state is the central innovation of this paper.} It is distinct
-from \textsc{deny}:
+from \textsc{deny}, and this distinction is not merely terminological:
 \begin{itemize}
-  \item \textsc{deny} = the system knows authority does not hold ($A(t) = \text{False}$)
-  \item \textsc{halt} = the system cannot determine whether authority holds ($A(t) = \bot$)
+  \item \textsc{deny} corresponds to \emph{falsified authority}: authority is constructible
+        and evaluates to False ($A(t) = \mathrm{False}$).
+  \item \textsc{halt} corresponds to \emph{non-evaluable authority}: authority cannot be
+        determined because one or more constructibility conditions fail ($A(t) = \bot$).
 \end{itemize}
-Systems that collapse this distinction execute under undefined authority.
+\textbf{Halt occurs when authority cannot be evaluated due to incomplete dependency
+resolution, not when it is invalid.} Systems that collapse this distinction treat
+epistemic incompleteness as a denial decision, which is incorrect: a non-evaluable
+authority is neither valid nor invalid, and executing under it---in either direction---
+violates the safety condition.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Architectural Overview}
@@ -381,6 +412,74 @@ Let $\theta_{\mathrm{auth}} = 0.2$.
 
 The same action class, three different outcomes---determined entirely by the
 observable state and uncertainty levels at the moment of execution.
+
+\subsection{Runtime Enforcement Loop}
+\label{sec:enforcement-loop}
+
+We define the enforcement loop that integrates RAM, IML, and ACP into a unified
+runtime execution process. This loop is what makes authority constructibility a
+continuously enforced property, not a one-time check.
+
+\begin{itemize}
+  \item \textbf{RAM} (this paper): defines authority and dependency resolution.
+  \item \textbf{IML} (Paper~2~\cite{fernandez2026c}): detects drift and invariant violations.
+  \item \textbf{ACP} (Paper~1~\cite{fernandez2026b}): enforces execution gating and transitions.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Runtime enforcement loop integrating RAM, IML, and ACP}]
+function enforce(action a):
+  while True:
+    S_t = observe_system_state()        # State Acquisition Layer
+
+    # Step 1: Dependency resolution (RAM)
+    D = resolve_dependencies(a, S_t)
+
+    # Step 2: Constructibility check (RAM -- Definition 1)
+    if (not is_observable(D, S_t)
+        or not is_closed(D)
+        or not is_consistent(D)):
+      state = HALT
+      wait_for_update()                 # Recovery Loop (Section 9)
+      continue
+
+    # Step 3: Authority evaluation (RAM)
+    if is_valid(a, D, S_t):
+      state = EXECUTE
+    else:
+      state = DENY
+
+    # Step 4: Enforcement (ACP -- stage 3 of 6)
+    if state == DENY:
+      reject_execution(a)
+      return DENY
+
+    if state == EXECUTE:
+      # Step 5: Pre-execution revalidation (IML)
+      if drift_detected(S_t) or invariants_violated(D, S_t):
+        state = HALT
+        continue                        # Re-enter loop
+
+      # Step 6: Execute
+      execute(a)
+
+      # Step 7: Post-execution monitoring (IML)
+      if drift_detected(S_t):
+        trigger_recovery(a)
+
+      return EXECUTE
+\end{lstlisting}
+
+\noindent\textbf{Key properties of the loop:}
+\begin{itemize}
+  \item \textit{Safety}: Execution is only reachable through the \textsc{execute} state,
+        which requires both constructibility and validity by construction.
+  \item \textit{Drift handling}: Any detected inconsistency at Step~5 forces a transition
+        to \textsc{halt}, preventing execution under stale conditions.
+  \item \textit{Recovery}: The loop re-enters evaluation until authority becomes
+        constructible again (see Section~\ref{sec:recovery}).
+  \item \textit{Separation of concerns}: RAM defines what must be true; IML checks whether
+        it remains true; ACP decides whether execution proceeds.
+\end{itemize}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Drift Handling}
@@ -547,18 +646,15 @@ integrated model, IML anomaly signals trigger RAM recomputation. This event-driv
 coupling ensures that authority is reconstructed when the governance stack observes
 meaningful state changes, without requiring continuous polling.
 
-\subsection{Allocation Layer (Paper~3)}
+\subsection{Allocation and Compositional Governance (Papers~3/4)}
 
-Paper~3~\cite{fairgov26} determines which agents are permitted to reach the execution
-gate. RAM determines whether execution is valid once an agent has been allocated access.
-The two layers are orthogonal: allocation controls who arrives; RAM controls what executes.
-
-\subsection{Compositional Governance (Paper~4)}
-
-Paper~4~\cite{fernandez2026comp} establishes that the four governance dimensions are
-irreducible. RAM becomes the terminal execution condition across all governance scales,
-ensuring that compositional correctness at the structural level does not substitute for
-runtime constructibility.
+Paper~3/4~\cite{fernandez2026govstr} addresses two interlinked structural questions:
+which agents are permitted to reach the execution gate (allocation), and whether the
+four governance dimensions are irreducible (compositional structure). RAM operates
+orthogonally to both: allocation controls who arrives at the gate; RAM controls what
+executes once they arrive. The irreducibility result further establishes that RAM
+cannot substitute for any structural layer---runtime constructibility is a necessary
+complement to the governance stack, not a replacement for it.
 
 \subsection{Reconstructive Authority Model (Paper~5)}
 
@@ -568,6 +664,7 @@ defines what must hold; the operationalization defines how it is enforced.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Recovery Loop under Reconstructive Authority}
+\label{sec:recovery}
 % ─────────────────────────────────────────────────────────────────────────────
 
 The introduction of the \textsc{halt} state ($A(t) = \bot$) ensures that execution does
@@ -653,6 +750,20 @@ $\rightarrow$ IML.
 If all authority-defining variables required by $F$ are eventually observable or
 resolvable, then a system implementing the Recovery Loop will eventually exit
 \textsc{halt} and resume execution.
+
+\noindent\textbf{Assumptions:}
+\begin{enumerate}
+  \item \textit{Eventual Observability}: all dependencies $d \in D(a)$ that are
+        temporarily unobservable become observable in finite time.
+  \item \textit{Finite Resolution}: dependency resolution and consistency checks
+        terminate in finite time.
+  \item \textit{Stable Evaluation Window}: there exists a non-zero interval during
+        which constructibility holds long enough to complete evaluation.
+\end{enumerate}
+
+Formally: if $\exists\, t' > t$ such that $\mathrm{Constructible}(a,\,O(t'))$ holds,
+then $\exists\, t'' \geq t'$ such that
+$\mathrm{ExecState}(a,\,O(t'')) \in \{\textsc{execute},\,\textsc{deny}\}$.
 \end{theorem}
 
 \begin{proof}
@@ -700,6 +811,39 @@ $A(t) = \bot$ regardless of the magnitude of uncertainty.
 RAM-based systems require construction of authority from current state before every
 action. Any unresolved dependency collapses authority to undefined, preventing execution.
 
+\subsection{Traditional Policy Enforcement (XACML, OPA)}
+
+Traditional policy enforcement systems operate under a binary decision model: actions
+are either permitted or denied based on policy evaluation over a given state snapshot.
+
+\textbf{XACML (eXtensible Access Control Markup Language)~\cite{oasis2013xacml}}
+defines a standardized architecture for attribute-based access control. Decisions are
+derived from policy rules evaluated against a request context. XACML assumes that the
+attribute context is complete and stable at evaluation time; it does not address the
+case where required attributes become unavailable between decision and execution.
+
+\textbf{OPA (Open Policy Agent)~\cite{opa2016}} provides a general-purpose policy
+engine widely used in cloud-native infrastructure. Policies written in Rego are
+evaluated against input documents to produce allow/deny decisions. While OPA supports
+dynamic inputs and partial evaluation, it does not explicitly model non-evaluable states:
+if a required data field is absent, the policy returns undefined or defaults to deny,
+without distinguishing between denied authority and non-evaluable authority.
+
+\textbf{Policy-as-Code frameworks} (Rego, Sentinel, Kyverno) share the same structural
+assumption: all required data is available at evaluation time.
+
+The core distinction of the proposed model is the explicit treatment of
+non-evaluability as a first-class execution state. Existing systems either treat missing
+data as a default (deny or allow) or resolve uncertainty within the evaluation phase,
+without propagating epistemic incompleteness into execution control. This model elevates
+non-evaluability to \textsc{halt}, defers execution until authority can be reconstructed,
+and couples execution strictly to runtime constructibility.
+
+\textbf{Complementary role.} This model is not intended to replace policy engines such
+as XACML or OPA. It operates as a complementary enforcement layer: policy engines define
+\textit{what} conditions must hold; RAM ensures those conditions are still valid
+\textit{when execution occurs}.
+
 \subsection{AI Control under Intentional Subversion}
 
 Recent work on AI control under intentional subversion~\cite{greenblatt2024ai} addresses
@@ -736,6 +880,93 @@ Definition~2) yet $\mathcal{S}$ proceeds. This violates the execution safety inv
 algorithm (Section~\ref{sec:dep-resolution}). \hfill $\blacksquare$
 \end{proof}
 
+\begin{theorem}[Execution Safety under Constructible Authority]
+\label{thm:safety}
+Under the runtime enforcement loop (Section~\ref{sec:enforcement-loop}), no action is
+executed unless its authority is constructible and valid at execution time. Formally:
+\[
+  \forall\, a,\, O(t):\quad
+  \mathrm{Execute}(a,\,O(t)) \;\Rightarrow\;
+  \Bigl(\mathrm{Constructible}(a,\,O(t)) \;\land\; A(t) = \mathrm{True}\Bigr)
+\]
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+\textit{Entry condition.} The enforcement loop evaluates constructibility
+(Definition~\ref{def:constructible}) before any execution attempt. If
+$\lnot\,\mathrm{Constructible}(a,\,O(t))$, the system transitions to \textsc{halt}
+and execution is deferred---no execution path is reachable.
+
+\textit{Authority evaluation.} If constructibility holds, authority is evaluated. If
+$A(t) = \mathrm{False}$, the system transitions to \textsc{deny} and execution is
+rejected.
+
+\textit{Pre-execution revalidation.} Immediately prior to execution (Step~5 of the
+loop), IML checks for drift and invariant violations. Any inconsistency forces a
+transition back to \textsc{halt}, preventing execution under stale or degraded state.
+
+\textit{Execution gate (ACP).} Execution is only reachable when the gate is in the
+\textsc{execute} state, which requires both constructibility and validity.
+
+\textit{Conclusion.} There exists no path in the enforcement loop that leads to
+execution without satisfying both $\mathrm{Constructible}(a,\,O(t))$ and
+$A(t) = \mathrm{True}$. Safety is guaranteed by construction. \hfill $\blacksquare$
+\end{proof}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Limitations}
+% ─────────────────────────────────────────────────────────────────────────────
+
+While the proposed model strengthens execution safety under dynamic conditions, it
+introduces several limitations that must be acknowledged.
+
+\subsection{Dependency on Observability}
+
+The model assumes that required dependencies can eventually be observed and resolved.
+In environments with persistent partial observability or unreliable data sources, the
+system may remain in the \textsc{halt} state indefinitely.
+
+This shifts the problem from incorrect execution to absence of execution, which may or
+may not be acceptable depending on the application domain. The conditional liveness
+guarantee (Theorem~\ref{thm:liveness}) explicitly requires eventual observability; it
+does not hold if dependencies are permanently unresolvable.
+
+\subsection{Latency Overhead}
+
+Continuous re-evaluation of constructibility and authority introduces runtime overhead.
+In high-frequency or low-latency systems, repeated dependency resolution and invariant
+checks may impact performance. Optimizations such as caching, incremental evaluation, or
+bounded revalidation windows may be required in practice, provided they do not weaken
+the constructibility guarantee.
+
+\subsection{Recovery Complexity}
+
+The transition out of \textsc{halt} depends on external conditions (restored
+observability, resolved dependencies). Designing robust recovery strategies requires
+careful coordination with monitoring and control layers. In poorly instrumented systems,
+recovery may be delayed or inconsistent.
+
+\subsection{Specification Burden}
+
+The model relies on explicit definitions of dependency sets $D(a)$, invariants, and
+validity conditions. In complex systems, defining and maintaining these elements can be
+non-trivial and error-prone. Incomplete or incorrect specifications will produce
+incorrect constructibility evaluations.
+
+\subsection{Non-Deterministic Environments}
+
+In highly volatile environments, rapid oscillation between constructible and
+non-constructible states may occur. Without stabilization mechanisms, this can lead to
+repeated transitions between \textsc{halt} and \textsc{execute}, affecting system
+predictability. The Stable Evaluation Window assumption in Theorem~\ref{thm:liveness}
+addresses this, but may not hold in adversarial settings.
+
+\subsection{Scope of Guarantees}
+
+The model guarantees safety with respect to execution under constructible authority. It
+does not guarantee correctness of the authority model itself, completeness of dependency
+specification, or optimality of decisions. These remain external to the enforcement layer.
+
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Trade-offs}
 % ─────────────────────────────────────────────────────────────────────────────
@@ -767,6 +998,18 @@ acting without constructible authority.
 \section{Conclusion}
 % ─────────────────────────────────────────────────────────────────────────────
 
+This paper introduced a runtime enforcement model that addresses the gap between
+decision and execution in dynamic systems. By requiring that authority be constructible
+at execution time---in the precise sense of Definition~\ref{def:constructible}---the
+model ensures that actions are only performed under conditions that can be actively
+validated.
+
+The introduction of a third execution state, \textsc{halt}, allows the system to
+explicitly represent and handle cases where authority cannot be evaluated due to
+incomplete or unresolved dependencies. This avoids unsafe execution under partial
+observability and drift, a limitation inherent to binary enforcement models such as
+XACML and OPA, which treat missing data as a default rather than an epistemic signal.
+
 Operationalizing reconstructive authority requires four shifts:
 
 \begin{enumerate}
@@ -780,6 +1023,18 @@ Operationalizing reconstructive authority requires four shifts:
         attempts to restore constructibility.
 \end{enumerate}
 
+We formalized authority constructibility (Definition~\ref{def:constructible}), defined
+execution semantics (Definition~\ref{def:execstate}), and presented a runtime enforcement
+loop integrating dependency resolution (RAM), invariant monitoring (IML), and execution
+control (ACP). Under these conditions, the model guarantees:
+
+\begin{itemize}
+  \item \textbf{Safety}: no action proceeds without constructible authority
+        (Theorems~\ref{thm:validity} and~\ref{thm:safety}).
+  \item \textbf{Liveness}: execution resumes when dependency resolution is eventually
+        possible (Theorem~\ref{thm:liveness}).
+\end{itemize}
+
 Together, Papers~5 and~6 complete the governance series:
 
 \begin{itemize}
@@ -788,10 +1043,11 @@ Together, Papers~5 and~6 complete the governance series:
   \item Paper~6 defines how authority is enforced at runtime.
 \end{itemize}
 
-The result is a system with two formal properties: \textbf{safety} (no action without
-constructible authority, Theorems~\ref{thm:validity} and~\ref{thm:liveness}) and
-\textbf{liveness} (execution resumes when observability is recoverable,
-Theorem~\ref{thm:liveness}).
+Rather than replacing existing policy systems, this approach extends their guarantees
+into runtime execution, providing a structured mechanism to ensure that decisions remain
+valid at the moment they are applied. Future work includes optimization strategies for
+low-latency environments, formal verification of system properties, and empirical
+evaluation in real-world deployments.
 
 \medskip
 \noindent\textit{Execution authority is not inherited. It is not validated. It is
@@ -1049,6 +1305,45 @@ constructed. When it cannot be constructed, execution must not occur.}
          reconstruction. Execution resumes only when $A(t')\neq\bot$; otherwise
          the loop retries.}
 \label{fig:recovery}
+\end{figure}
+
+% ── Figure 6 — Execution State Machine ───────────────────────────────────────
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  node distance=3.8cm,
+  state/.style={draw, circle, minimum size=2.4cm, align=center, font=\small,
+                thick},
+  lbl/.style={draw=none, fill=white, font=\scriptsize, inner sep=2pt,
+              align=center, text width=3.2cm}
+]
+% Nodes
+\node[state] (halt)  {\textsc{Halt}\\$A(t)=\bot$};
+\node[state] (allow) [right of=halt] {\textsc{Execute}\\$A(t)=\top$};
+\node[state] (deny)  [below right=2.5cm and 0.8cm of halt] {\textsc{Deny}\\$A(t)=\bot$};
+
+% Transitions
+\draw[->, bend left=20] (halt) to
+      node[lbl, above]{Constructible $\land$ Valid} (allow);
+\draw[->, bend left=15] (halt) to
+      node[lbl, left, text width=2.8cm]{Constructible $\land$ $\lnot$Valid} (deny);
+\draw[->, bend left=20] (allow) to
+      node[lbl, below]{Drift / Loss of\\Observability} (halt);
+\draw[->] (allow) to
+      node[lbl, right]{Invariant\\Violation} (deny);
+\draw[->, bend left=20] (deny) to
+      node[lbl, right, text width=2.4cm]{Re-evaluation\\(deps change)} (halt);
+
+% Entry arrow
+\draw[->] (-2.8, 0) -- node[above, font=\scriptsize]{evaluate} (halt);
+\end{tikzpicture}
+\caption{Execution state machine under ternary enforcement. Entry is always through
+         the evaluation gate. Execution is only permitted in the \textsc{Execute} state,
+         which requires both constructibility and validity. Drift or loss of observability
+         forces transition back to \textsc{Halt}; the Recovery Loop governs exit from
+         \textsc{Halt}.}
+\label{fig:statemachine}
 \end{figure}
 
 % ─────────────────────────────────────────────────────────────────────────────
