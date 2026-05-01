@@ -1,0 +1,26 @@
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+*.dvi
+
+# PDF output (not versioned)
+*.pdf
+*.zip
+
+# Editor files
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/
+
+# Claude Code local config
+.claude/
